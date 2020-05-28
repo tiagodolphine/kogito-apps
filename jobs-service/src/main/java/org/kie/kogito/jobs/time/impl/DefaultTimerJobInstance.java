@@ -13,17 +13,17 @@
  * limitations under the License.
 */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
 import java.io.Serializable;
 import java.util.Date;
 import java.util.concurrent.Callable;
 
-import org.kie.services.time.InternalSchedulerService;
-import org.kie.services.time.Job;
-import org.kie.services.time.JobContext;
-import org.kie.services.time.JobHandle;
-import org.kie.services.time.Trigger;
+import org.kie.kogito.jobs.time.InternalSchedulerService;
+import org.kie.kogito.jobs.time.Job;
+import org.kie.kogito.jobs.time.JobContext;
+import org.kie.kogito.jobs.time.JobHandle;
+import org.kie.kogito.jobs.time.Trigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

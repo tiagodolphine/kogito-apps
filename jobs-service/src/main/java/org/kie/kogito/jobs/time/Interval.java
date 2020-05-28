@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.kie.services.time;
+package org.kie.kogito.jobs.time;
 
 /**
  * A class to represent a time interval. Specially useful to 

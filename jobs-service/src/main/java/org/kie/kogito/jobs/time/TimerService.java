@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package org.kie.services.time;
+package org.kie.kogito.jobs.time;
 
 import java.util.Collection;
 
-import org.kie.services.time.impl.TimerJobFactoryManager;
-import org.kie.services.time.impl.TimerJobInstance;
+import org.kie.kogito.jobs.time.impl.TimerJobFactoryManager;
+import org.kie.kogito.jobs.time.impl.TimerJobInstance;
 
 /**
  * An interface for all timer service implementations used in a drools session.

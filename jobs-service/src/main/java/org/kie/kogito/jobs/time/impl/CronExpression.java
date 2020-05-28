@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
 import java.io.Serializable;
 import java.text.ParseException;

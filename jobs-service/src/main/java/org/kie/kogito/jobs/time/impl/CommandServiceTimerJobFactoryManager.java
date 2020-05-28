@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Red Hat, Inc. and/or its affiliates.
+ * Copyright 2005 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
-package org.kie.services.time;
+package org.kie.kogito.jobs.time.impl;
 
-public interface Job {
-    void execute(JobContext ctx);
+import org.kie.api.runtime.ExecutableRunner;
+
+public interface CommandServiceTimerJobFactoryManager extends TimerJobFactoryManager {
+    void setRunner(ExecutableRunner runner);
+    ExecutableRunner getRunner();
 }

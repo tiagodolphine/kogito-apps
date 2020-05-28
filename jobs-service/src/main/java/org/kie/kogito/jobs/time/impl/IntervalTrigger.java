@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 
-import org.kie.services.time.Trigger;
+import org.kie.kogito.jobs.time.Trigger;
 import org.kie.api.runtime.Calendars;
 
 public class IntervalTrigger

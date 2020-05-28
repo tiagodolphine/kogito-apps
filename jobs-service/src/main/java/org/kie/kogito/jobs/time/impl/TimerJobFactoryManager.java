@@ -13,15 +13,15 @@
  * limitations under the License.
 */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
 import java.util.Collection;
 
-import org.kie.services.time.InternalSchedulerService;
-import org.kie.services.time.Job;
-import org.kie.services.time.JobContext;
-import org.kie.services.time.JobHandle;
-import org.kie.services.time.Trigger;
+import org.kie.kogito.jobs.time.InternalSchedulerService;
+import org.kie.kogito.jobs.time.Job;
+import org.kie.kogito.jobs.time.JobContext;
+import org.kie.kogito.jobs.time.JobHandle;
+import org.kie.kogito.jobs.time.Trigger;
 
 public interface TimerJobFactoryManager {
     TimerJobInstance createTimerJobInstance(Job job,

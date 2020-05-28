@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -22,7 +22,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Date;
 
-import org.kie.services.time.Trigger;
+import org.kie.kogito.jobs.time.Trigger;
 
 public class CompositeMaxDurationTrigger
     implements

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.kie.services.time.JobHandle;
+import org.kie.kogito.jobs.time.JobHandle;
 
 /**
  * A JobHandle container for scheduling multiple jobs

@@ -13,10 +13,10 @@
  * limitations under the License.
 */
 
-package org.kie.services.time;
+package org.kie.kogito.jobs.time;
 
-import org.kie.services.time.impl.TimerJobInstance;
+import org.kie.kogito.jobs.time.impl.TimerJobInstance;
 
 public interface InternalSchedulerService {
-    public void internalSchedule(TimerJobInstance timerJobInstance);
+    void internalSchedule(TimerJobInstance timerJobInstance);
 }

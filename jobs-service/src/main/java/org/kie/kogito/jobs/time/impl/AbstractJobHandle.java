@@ -13,9 +13,9 @@
  * limitations under the License.
 */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
-import org.kie.services.time.JobHandle;
+import org.kie.kogito.jobs.time.JobHandle;
 
 public abstract class AbstractJobHandle implements JobHandle {
 

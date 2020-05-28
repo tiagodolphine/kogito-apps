@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package org.kie.services.time.impl;
+package org.kie.kogito.jobs.time.impl;
 
 import java.io.Serializable;
 
-import org.kie.services.time.Job;
+import org.kie.kogito.jobs.time.Job;
 
 /**
  * A default implementation for the JobHandle interface

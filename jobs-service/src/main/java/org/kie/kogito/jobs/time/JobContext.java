@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.kie.services.time;
+package org.kie.kogito.jobs.time;
 
 import java.io.Serializable;
 

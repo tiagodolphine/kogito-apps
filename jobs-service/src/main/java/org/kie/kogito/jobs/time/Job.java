@@ -14,17 +14,8 @@
  * limitations under the License.
  */
 
-package org.kie.services.time;
+package org.kie.kogito.jobs.time;
 
-
-/**
- * An interface for Job Handles
- */
-public interface JobHandle {
-    
-    public long getId();
-
-    public void setCancel(boolean cancel);
-    
-    public boolean isCancel();
+public interface Job {
+    void execute(JobContext ctx);
 }
