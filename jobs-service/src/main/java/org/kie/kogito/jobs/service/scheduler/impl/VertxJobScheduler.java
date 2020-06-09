@@ -16,24 +16,30 @@
 
 package org.kie.kogito.jobs.service.scheduler.impl;
 
-import java.time.Duration;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import io.vertx.axle.core.Vertx;
+import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
 import org.eclipse.microprofile.reactive.streams.operators.ReactiveStreams;
-import org.kie.kogito.jobs.api.Job;
 import org.kie.kogito.jobs.service.executor.JobExecutor;
 import org.kie.kogito.jobs.service.model.JobExecutionResponse;
-import org.kie.kogito.jobs.service.model.ScheduledJob;
+import org.kie.kogito.jobs.service.refactoring.job.HttpJob;
+import org.kie.kogito.jobs.service.refactoring.job.HttpJobContext;
+import org.kie.kogito.jobs.service.refactoring.job.JobDetails;
+import org.kie.kogito.jobs.service.refactoring.job.ManageableJobHandle;
+import org.kie.kogito.jobs.service.refactoring.vertx.VertxTimerServiceScheduler;
 import org.kie.kogito.jobs.service.repository.ReactiveJobRepository;
 import org.kie.kogito.jobs.service.scheduler.BaseTimerJobScheduler;
 import org.kie.kogito.jobs.service.stream.AvailableStreams;
+import org.kie.kogito.jobs.service.utils.ErrorHandling;
+import org.kie.kogito.timer.JobHandle;
+import org.kie.kogito.timer.Trigger;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +55,9 @@ public class VertxJobScheduler extends BaseTimerJobScheduler {
     @Inject
     Vertx vertx;
 
+    @Inject
+    VertxTimerServiceScheduler delegate;
+
     protected VertxJobScheduler() {
     }
 
@@ -60,56 +69,47 @@ public class VertxJobScheduler extends BaseTimerJobScheduler {
     }
 
     @Override
-    public PublisherBuilder<String> doSchedule(Duration delay, Job job) {
+    public PublisherBuilder<ManageableJobHandle> doSchedule(JobDetails job, Optional<Trigger> trigger) {
         LOGGER.debug("Job Scheduling {}", job);
         return ReactiveStreams
                 .of(job)
-                .map(j -> setTimer(delay, j))
-                .map(String::valueOf);
+                .map(j -> delegate.scheduleJob(new HttpJob(), new HttpJobContext(job),
+                                               trigger.orElse(job.getTrigger())));
     }
 
     @Override
-    public PublisherBuilder<String> doPeriodicSchedule(Duration interval, Job job) {
-        LOGGER.debug("Job Periodic Scheduling {}", job);
-        return ReactiveStreams
-                .of(job)
-                .map(j -> setPeriodicTimer(interval, j))
-                .map(String::valueOf);
-    }
-
-    private long setTimer(Duration delay, Job job) {
-        return vertx.setTimer(delay.toMillis(), scheduledId -> execute(job));
-    }
-
-    private long setPeriodicTimer(Duration interval, Job job) {
-        return vertx.setPeriodic(interval.toMillis(), scheduledId -> execute(job));
-    }
-
-    @Override
-    public Publisher<Boolean> doCancel(ScheduledJob scheduledJob) {
+    public Publisher<ManageableJobHandle> doCancel(JobDetails scheduledJob) {
         return ReactiveStreams
                 .of(scheduledJob)
-                .map(ScheduledJob::getScheduledId)
-                .filter(Objects::nonNull)
-                .map(Long::valueOf)
-                .map(vertx::cancelTimer)
+                .map(j -> {
+                    ManageableJobHandle handle = new ManageableJobHandle(j.getScheduledId());
+                    handle.setCancel(delegate.removeJob(handle));
+                    return handle;
+                })
                 .buildRs();
     }
 
     //Stream Processors
 
     @Incoming(AvailableStreams.JOB_ERROR_EVENTS)
-    public CompletionStage jobErrorProcessor(JobExecutionResponse error) {
-        LOGGER.warn("Error received {}", error);
-        return handleJobExecutionError(error)
+    @Acknowledgment(Acknowledgment.Strategy.PRE_PROCESSING)
+    public CompletionStage jobErrorProcessor(JobExecutionResponse response) {
+        LOGGER.warn("Error received {}", response);
+        return ErrorHandling.skipErrorPublisherBuilder(this::handleJobExecutionError, response)
                 .findFirst()
-                .run();
+                .run()
+                .thenApply(Optional::isPresent)
+                .exceptionally(e -> {
+                    LOGGER.error("Error handling error {}", response, e);
+                    return false;
+                });
     }
 
     @Incoming(AvailableStreams.JOB_SUCCESS_EVENTS)
+    @Acknowledgment(Acknowledgment.Strategy.PRE_PROCESSING)
     public CompletionStage jobSuccessProcessor(JobExecutionResponse response) {
         LOGGER.debug("Success received to be processed {}", response);
-        return handleJobExecutionSuccess(response)
+        return ErrorHandling.skipErrorPublisherBuilder(this::handleJobExecutionSuccess, response)
                 .findFirst()
                 .run();
     }

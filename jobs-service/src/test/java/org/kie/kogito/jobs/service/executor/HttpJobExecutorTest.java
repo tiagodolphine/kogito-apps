@@ -33,7 +33,8 @@ import org.kie.kogito.jobs.api.Job;
 import org.kie.kogito.jobs.api.JobBuilder;
 import org.kie.kogito.jobs.service.converters.HttpConverters;
 import org.kie.kogito.jobs.service.model.JobExecutionResponse;
-import org.kie.kogito.jobs.service.model.ScheduledJob;
+import org.kie.kogito.jobs.service.model.JobDetails;
+import org.kie.kogito.jobs.service.refactoring.job.JobDetails;
 import org.kie.kogito.jobs.service.stream.JobStreams;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -79,7 +80,7 @@ class HttpJobExecutorTest {
     void testExecutePeriodic(@Mock HttpRequest<Buffer> request, @Mock MultiMap params) {
         Job job = JobBuilder.builder().repeatInterval(1l).repeatLimit(10).callbackEndpoint(ENDPOINT).id(JOB_ID).
                 build();
-        ScheduledJob scheduledJob = ScheduledJob.builder().job(job).executionCounter(1).build();
+        JobDetails scheduledJob = JobDetails.builder().job(job).executionCounter(1).build();
 
         Map queryParams = assertExecuteAndReturnQueryParams(request, params, scheduledJob, false);
         assertThat(queryParams.size()).isEqualTo(1);
@@ -87,7 +88,7 @@ class HttpJobExecutorTest {
     }
 
     private Map assertExecuteAndReturnQueryParams(@Mock HttpRequest<Buffer> request, @Mock MultiMap params,
-                                                  ScheduledJob scheduledJob, boolean mockError) {
+                                                  JobDetails scheduledJob, boolean mockError) {
         when(webClient.request(HttpMethod.POST, 8080, "localhost", "/endpoint")).thenReturn(request);
         when(request.queryParams()).thenReturn(params);
         HttpResponse response = mock(HttpResponse.class);
@@ -114,7 +115,7 @@ class HttpJobExecutorTest {
     @Test
     void testExecute(@Mock HttpRequest<Buffer> request, @Mock MultiMap params) {
         Job job = createSimpleJob();
-        ScheduledJob scheduledJob = ScheduledJob.builder().job(job).build();
+        JobDetails scheduledJob = JobDetails.builder().job(job).build();
 
         Map queryParams = assertExecuteAndReturnQueryParams(request, params, scheduledJob, false);
         assertThat(queryParams.size()).isEqualTo(0);
@@ -123,7 +124,7 @@ class HttpJobExecutorTest {
     @Test
     void testExecuteWithError(@Mock HttpRequest<Buffer> request, @Mock MultiMap params) {
         Job job = createSimpleJob();
-        ScheduledJob scheduledJob = ScheduledJob.builder().job(job).build();
+        JobDetails scheduledJob = JobDetails.builder().job(job).build();
 
         Map queryParams = assertExecuteAndReturnQueryParams(request, params, scheduledJob, true);
         assertThat(queryParams.size()).isEqualTo(0);
