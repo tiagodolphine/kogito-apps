@@ -16,6 +16,7 @@
 
 package org.kie.kogito.jobs.service.scheduler.impl;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
@@ -27,7 +28,6 @@ import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
 import org.eclipse.microprofile.reactive.streams.operators.ReactiveStreams;
-import org.kie.kogito.jobs.service.executor.JobExecutor;
 import org.kie.kogito.jobs.service.model.JobExecutionResponse;
 import org.kie.kogito.jobs.service.refactoring.job.HttpJob;
 import org.kie.kogito.jobs.service.refactoring.job.HttpJobContext;
@@ -38,7 +38,6 @@ import org.kie.kogito.jobs.service.repository.ReactiveJobRepository;
 import org.kie.kogito.jobs.service.scheduler.BaseTimerJobScheduler;
 import org.kie.kogito.jobs.service.stream.AvailableStreams;
 import org.kie.kogito.jobs.service.utils.ErrorHandling;
-import org.kie.kogito.timer.JobHandle;
 import org.kie.kogito.timer.Trigger;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -48,9 +47,9 @@ import org.slf4j.LoggerFactory;
  * Job Scheduler based on Vert.x engine.
  */
 @ApplicationScoped
-public class VertxJobScheduler extends BaseTimerJobScheduler {
+public class TimerDelegateJobScheduler extends BaseTimerJobScheduler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(VertxJobScheduler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TimerDelegateJobScheduler.class);
 
     @Inject
     Vertx vertx;
@@ -58,13 +57,13 @@ public class VertxJobScheduler extends BaseTimerJobScheduler {
     @Inject
     VertxTimerServiceScheduler delegate;
 
-    protected VertxJobScheduler() {
+    protected TimerDelegateJobScheduler() {
     }
 
-    public VertxJobScheduler(Vertx vertx, JobExecutor jobExecutor, ReactiveJobRepository jobRepository,
-                             long backoffRetryMillis,
-                             long maxIntervalLimitToRetryMillis) {
-        super(jobExecutor, jobRepository, backoffRetryMillis, maxIntervalLimitToRetryMillis);
+    public TimerDelegateJobScheduler(ReactiveJobRepository jobRepository,
+                                     long backoffRetryMillis,
+                                     long maxIntervalLimitToRetryMillis) {
+        super(jobRepository, backoffRetryMillis, maxIntervalLimitToRetryMillis);
         this.vertx = vertx;
     }
 
@@ -73,16 +72,18 @@ public class VertxJobScheduler extends BaseTimerJobScheduler {
         LOGGER.debug("Job Scheduling {}", job);
         return ReactiveStreams
                 .of(job)
-                .map(j -> delegate.scheduleJob(new HttpJob(), new HttpJobContext(job),
-                                               trigger.orElse(job.getTrigger())));
+                .map(j -> delegate.scheduleJob(new HttpJob(), new HttpJobContext(j),
+                                               trigger.orElse(j.getTrigger())));
     }
 
     @Override
     public Publisher<ManageableJobHandle> doCancel(JobDetails scheduledJob) {
         return ReactiveStreams
                 .of(scheduledJob)
-                .map(j -> {
-                    ManageableJobHandle handle = new ManageableJobHandle(j.getScheduledId());
+                .map(JobDetails::getScheduledId)
+                .filter(Objects::nonNull)
+                .map(scheduledId -> {
+                    ManageableJobHandle handle = new ManageableJobHandle(scheduledId);
                     handle.setCancel(delegate.removeJob(handle));
                     return handle;
                 })

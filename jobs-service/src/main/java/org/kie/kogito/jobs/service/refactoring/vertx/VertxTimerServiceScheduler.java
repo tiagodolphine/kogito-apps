@@ -126,7 +126,11 @@ public class VertxTimerServiceScheduler implements TimerService<ManageableJobHan
         });
 
         ManageableJobHandle jobHandle = (ManageableJobHandle) handle;
-        jobHandle.setId(String.valueOf(id));
+        jobHandle.setId(id);
         jobHandle.setScheduledTime(now);
+    }
+
+    public Vertx getVertx() {
+        return vertx;
     }
 }

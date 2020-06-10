@@ -17,6 +17,7 @@
 package org.kie.kogito.jobs.service.repository.impl;
 
 import java.time.ZonedDateTime;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,7 +43,7 @@ import org.kie.kogito.jobs.service.utils.DateUtil;
 @Repository("in-memory")
 public class InMemoryJobRepository extends BaseReactiveJobRepository implements ReactiveJobRepository {
 
-    private final Map<String, JobDetails> jobMap = new ConcurrentHashMap<>();
+    private final Map<String, JobDetails<Object>> jobMap = new ConcurrentHashMap<>();
 
     public InMemoryJobRepository() {
         super(null, null);
@@ -90,8 +91,7 @@ public class InMemoryJobRepository extends BaseReactiveJobRepository implements 
                                 .filter(s -> Objects.nonNull(status))
                                 .map(s -> Stream.of(status).anyMatch(s::equals)).orElse(true))
                         .filter(j -> DateUtil.fromDate(j.getTrigger().hasNextFireTime()).isAfter(from) && DateUtil.fromDate(j.getTrigger().hasNextFireTime()).isBefore(to))
-                        //.sorted(Comparator.comparing(JobDetails::getPriority).reversed())
-                        //TODO
+                        .sorted(Comparator.comparing(JobDetails<Object>::getPriority).reversed())
                         .collect(Collectors.toList()));
     }
 }

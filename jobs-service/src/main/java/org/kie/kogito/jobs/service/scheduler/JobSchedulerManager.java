@@ -30,7 +30,7 @@ import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
 import org.kie.kogito.jobs.service.model.JobStatus;
 import org.kie.kogito.jobs.service.refactoring.job.JobDetails;
 import org.kie.kogito.jobs.service.repository.ReactiveJobRepository;
-import org.kie.kogito.jobs.service.scheduler.impl.VertxJobScheduler;
+import org.kie.kogito.jobs.service.scheduler.impl.TimerDelegateJobScheduler;
 import org.kie.kogito.jobs.service.utils.DateUtil;
 import org.kie.kogito.jobs.service.utils.ErrorHandling;
 import org.slf4j.Logger;
@@ -62,7 +62,7 @@ public class JobSchedulerManager {
     long loadJobFromCurrentTimeIntervalInMinutes;
 
     @Inject
-    VertxJobScheduler scheduler;
+    TimerDelegateJobScheduler scheduler;
 
     @Inject
     ReactiveJobRepository repository;

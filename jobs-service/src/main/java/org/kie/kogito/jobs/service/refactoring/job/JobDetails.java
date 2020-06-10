@@ -17,6 +17,7 @@
 package org.kie.kogito.jobs.service.refactoring.job;
 
 import java.time.ZonedDateTime;
+import java.util.Objects;
 import java.util.StringJoiner;
 
 import org.kie.kogito.jobs.service.model.JobStatus;
@@ -34,6 +35,7 @@ public class JobDetails <T> {
     private JobStatus status;
     private ZonedDateTime lastUpdate;
     private Integer retries;
+    private Integer priority;
     private Integer executionCounter;//number of times the job was executed
     //may be used to build the jobḦandle
     private String scheduledId;//the execution control on the scheduler (id on vertx.setTimer, quartzId...)
@@ -60,7 +62,7 @@ public class JobDetails <T> {
 
     public JobDetails(String id, String correlationId, JobStatus status, ZonedDateTime lastUpdate, Integer retries,
                       Integer executionCounter, String scheduledId, T payload, Recipient recipient, Trigger trigger,
-                      Type type) {
+                      Type type, Integer priority) {
         this.id = id;
         this.correlationId = correlationId;
         this.status = status;
@@ -72,6 +74,7 @@ public class JobDetails <T> {
         this.recipient = recipient;
         this.trigger = trigger;
         this.type = type;
+        this.priority = priority;
     }
 
     public String getId() {
@@ -118,8 +121,39 @@ public class JobDetails <T> {
         return type;
     }
 
+    public Integer getPriority() {
+        return priority;
+    }
+
     public static <T>JobDetailsBuilder<T> builder(){
         return new JobDetailsBuilder<>();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof JobDetails)) {
+            return false;
+        }
+        JobDetails<?> that = (JobDetails<?>) o;
+        return Objects.equals(getId(), that.getId()) &&
+                Objects.equals(getCorrelationId(), that.getCorrelationId()) &&
+                getStatus() == that.getStatus() &&
+                Objects.equals(getLastUpdate(), that.getLastUpdate()) &&
+                Objects.equals(getRetries(), that.getRetries()) &&
+                Objects.equals(getExecutionCounter(), that.getExecutionCounter()) &&
+                Objects.equals(getScheduledId(), that.getScheduledId()) &&
+                Objects.equals(getPayload(), that.getPayload()) &&
+                Objects.equals(getRecipient(), that.getRecipient()) &&
+                Objects.equals(getTrigger(), that.getTrigger()) &&
+                getType() == that.getType();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getCorrelationId(), getStatus(), getLastUpdate(), getRetries(), getExecutionCounter(), getScheduledId(), getPayload(), getRecipient(), getTrigger(), getType());
     }
 
     @Override

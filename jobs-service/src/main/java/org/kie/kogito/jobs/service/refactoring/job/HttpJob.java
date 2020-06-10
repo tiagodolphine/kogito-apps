@@ -16,9 +16,11 @@
 
 package org.kie.kogito.jobs.service.refactoring.job;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import io.quarkus.arc.Arc;
+import io.quarkus.arc.InstanceHandle;
 import org.kie.kogito.jobs.service.executor.HttpJobExecutor;
 import org.kie.kogito.timer.Job;
 import org.slf4j.Logger;
@@ -31,14 +33,16 @@ public class HttpJob implements Job<HttpJobContext> {
 
     private static Logger LOGGER = LoggerFactory.getLogger(HttpJob.class);
 
-    private HttpJobExecutor executor;
+    private Optional<HttpJobExecutor> executor;
 
     public HttpJob(HttpJobExecutor executor) {
-        this.executor = executor;
+        this.executor = Optional.ofNullable(executor);
     }
 
     public HttpJob() {
-        this.executor = Arc.container().instance(HttpJobExecutor.class).get();
+        this.executor = Optional.ofNullable(Arc.container())
+                .map(c -> c.instance(HttpJobExecutor.class))
+                .map(InstanceHandle::get);
     }
 
     @Override
@@ -47,6 +51,6 @@ public class HttpJob implements Job<HttpJobContext> {
         System.out.println("oi");
         //load job
         //use adapter
-        executor.execute(CompletableFuture.completedFuture(ctx.getJobDetails()));
+        executor.ifPresent(e -> e.execute(CompletableFuture.completedFuture(ctx.getJobDetails())));
     }
 }

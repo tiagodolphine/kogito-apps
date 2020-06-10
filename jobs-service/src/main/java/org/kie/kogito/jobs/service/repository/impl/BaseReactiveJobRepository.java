@@ -85,11 +85,9 @@ public abstract class BaseReactiveJobRepository implements ReactiveJobRepository
     }
 
     private JobDetails doMerge(JobDetails toMerge, JobDetails current) {
-        //TODO
-//        return JobDetails.builder()
-//                .of(current)
-//                .merge(toMerge)
-//                .build();
-        return toMerge;
+        return JobDetails.builder()
+                .of(current)
+                .merge(toMerge)
+                .build();
     }
 }

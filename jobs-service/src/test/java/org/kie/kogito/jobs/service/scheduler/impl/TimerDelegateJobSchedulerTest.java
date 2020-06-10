@@ -17,18 +17,23 @@
 package org.kie.kogito.jobs.service.scheduler.impl;
 
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import io.reactivex.Flowable;
-import io.vertx.axle.core.Vertx;
 import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.kie.kogito.jobs.service.refactoring.job.HttpJob;
+import org.kie.kogito.jobs.service.refactoring.job.HttpJobContext;
 import org.kie.kogito.jobs.service.refactoring.job.JobDetails;
 import org.kie.kogito.jobs.service.refactoring.job.ManageableJobHandle;
+import org.kie.kogito.jobs.service.refactoring.vertx.VertxTimerServiceScheduler;
 import org.kie.kogito.jobs.service.scheduler.BaseTimerJobScheduler;
 import org.kie.kogito.jobs.service.scheduler.BaseTimerJobSchedulerTest;
+import org.kie.kogito.jobs.service.utils.DateUtil;
+import org.kie.kogito.timer.Job;
+import org.kie.kogito.timer.JobContext;
+import org.kie.kogito.timer.Trigger;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -37,34 +42,31 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivestreams.Publisher;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class VertxJobSchedulerTest extends BaseTimerJobSchedulerTest {
+class TimerDelegateJobSchedulerTest extends BaseTimerJobSchedulerTest {
 
     @Spy
     @InjectMocks
-    private VertxJobScheduler tested;
+    private TimerDelegateJobScheduler tested;
 
     @Mock
-    private Vertx vertx;
+    private VertxTimerServiceScheduler timer;
 
     @Captor
-    private ArgumentCaptor<Consumer<Long>> handlerCaptor;
-
-    @Captor
-    private ArgumentCaptor<Long> timeCaptor;
+    private ArgumentCaptor<ManageableJobHandle> timeCaptor;
 
     @BeforeEach
     public void setUp() {
         super.setUp();
-        lenient().when(vertx.setTimer(anyLong(), any())).thenReturn(Long.valueOf(SCHEDULED_ID));
-        lenient().when(vertx.setPeriodic(anyLong(), any())).thenReturn(Long.valueOf(SCHEDULED_ID));
+        ManageableJobHandle handle = new ManageableJobHandle(SCHEDULED_ID);
+        handle.setScheduledTime(DateUtil.now());
+        lenient().when(timer.scheduleJob(any(Job.class), any(JobContext.class), any(Trigger.class))).thenReturn(handle);
     }
 
     @Override
@@ -75,25 +77,15 @@ class VertxJobSchedulerTest extends BaseTimerJobSchedulerTest {
     @Test
     void testDoSchedule() {
         PublisherBuilder<ManageableJobHandle> schedule = tested.doSchedule(scheduledJob, Optional.empty());
-        verify(vertx, never()).setTimer(timeCaptor.capture(), handlerCaptor.capture());
         Flowable.fromPublisher(schedule.buildRs()).subscribe(dummyCallback(), dummyCallback());
-        verify(vertx).setTimer(timeCaptor.capture(), handlerCaptor.capture());
-        assertJobSchedule();
-    }
-
-    private void assertJobSchedule() {
-        assertThat(timeCaptor.getValue()).isEqualTo(1);
-        handlerCaptor.getValue().accept(10l);
-        verify(jobRepository).get(JOB_ID);
-        verify(jobExecutor).execute(scheduled);
+        verify(timer).scheduleJob(any(HttpJob.class), any(HttpJobContext.class), eq(scheduledJob.getTrigger()));
     }
 
     @Test
     void testDoCancel() {
         Publisher<ManageableJobHandle> cancel = tested.doCancel(JobDetails.builder().of(scheduledJob).scheduledId(SCHEDULED_ID).build());
-        verify(vertx, never()).cancelTimer(Long.valueOf(SCHEDULED_ID));
         Flowable.fromPublisher(cancel).subscribe(dummyCallback(), dummyCallback());
-        verify(vertx).cancelTimer(Long.valueOf(SCHEDULED_ID));
+        verify(timer).removeJob(any(ManageableJobHandle.class));
     }
 
     @Test
@@ -101,6 +93,6 @@ class VertxJobSchedulerTest extends BaseTimerJobSchedulerTest {
         Publisher<ManageableJobHandle> cancel =
                 tested.doCancel(JobDetails.builder().of(scheduledJob).scheduledId(null).build());
         Flowable.fromPublisher(cancel).subscribe(dummyCallback(), dummyCallback());
-        verify(vertx, never()).cancelTimer(anyLong());
+        verify(timer, never()).removeJob(any(ManageableJobHandle.class));
     }
 }

@@ -117,6 +117,7 @@ public abstract class BaseJobRepositoryTest {
                 .map(id -> JobDetails.builder()
                         .status(JobStatus.SCHEDULED)
                         .id(String.valueOf(id))
+                        .priority(id)
                         .trigger(new PointInTimeTrigger(DateUtil.now().plusMinutes(id).toInstant().toEpochMilli(), null, null))
                         //.priority(id)
                         .build())

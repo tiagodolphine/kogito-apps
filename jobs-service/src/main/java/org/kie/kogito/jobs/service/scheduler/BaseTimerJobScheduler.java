@@ -32,10 +32,8 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
 import org.eclipse.microprofile.reactive.streams.operators.ReactiveStreams;
-import org.kie.kogito.jobs.service.executor.JobExecutor;
 import org.kie.kogito.jobs.service.model.JobExecutionResponse;
 import org.kie.kogito.jobs.service.model.JobStatus;
-import org.kie.kogito.jobs.service.model.ScheduledJob;
 import org.kie.kogito.jobs.service.refactoring.job.JobDetails;
 import org.kie.kogito.jobs.service.refactoring.job.ManageableJobHandle;
 import org.kie.kogito.jobs.service.repository.ReactiveJobRepository;
@@ -76,22 +74,17 @@ public abstract class BaseTimerJobScheduler implements ReactiveJobScheduler {
     long schedulerChunkInMinutes;
 
     @Inject
-    JobExecutor jobExecutor;
-
-    @Inject
     ReactiveJobRepository jobRepository;
 
     private final Map<String, ZonedDateTime> schedulerControl;
 
     protected BaseTimerJobScheduler() {
-        this(null, null, 0, 0);
+        this(null, 0, 0);
     }
 
-    public BaseTimerJobScheduler(JobExecutor jobExecutor,
-                                 ReactiveJobRepository jobRepository,
+    public BaseTimerJobScheduler(ReactiveJobRepository jobRepository,
                                  long backoffRetryMillis,
                                  long maxIntervalLimitToRetryMillis) {
-        this.jobExecutor = jobExecutor;
         this.jobRepository = jobRepository;
         this.backoffRetryMillis = backoffRetryMillis;
         this.maxIntervalLimitToRetryMillis = maxIntervalLimitToRetryMillis;
@@ -169,7 +162,8 @@ public abstract class BaseTimerJobScheduler implements ReactiveJobScheduler {
                                             .flatMapCompletionStage(this::cancel)
                                             .map(deleted -> j);
                                 case RETRY:
-                                    return handleRetry(CompletableFuture.completedFuture(j));
+                                    return handleRetry(CompletableFuture.completedFuture(j))
+                                            .flatMap(retryJob -> ReactiveStreams.empty());
                                 default:
                                     //empty to break the stream processing
                                     return ReactiveStreams.empty();
@@ -197,7 +191,6 @@ public abstract class BaseTimerJobScheduler implements ReactiveJobScheduler {
                 .flatMap(job -> Optional
                         .ofNullable(job.getTrigger())
                         .filter(trigger -> Objects.nonNull(trigger.hasNextFireTime()))
-                        //todo: check if on current chunk
                         .map(time -> doJobScheduling(job))
                         //in case the job should not be executed anymore (there is no nextFireTime)
                         .orElseGet(() -> ReactiveStreams.of(jobWithStatus(job, JobStatus.EXECUTED))))
@@ -214,7 +207,7 @@ public abstract class BaseTimerJobScheduler implements ReactiveJobScheduler {
                 .flatMap(this::handleJobExecutionSuccess);
     }
 
-    private boolean isExpired(ZonedDateTime expirationTime, Integer retries) {
+    private boolean isExpired(ZonedDateTime expirationTime, int retries) {
         final Duration limit =
                 Duration.ofMillis(maxIntervalLimitToRetryMillis)
                         .minus(Duration.ofMillis(retries * backoffRetryMillis));
@@ -249,10 +242,7 @@ public abstract class BaseTimerJobScheduler implements ReactiveJobScheduler {
                 .flatMap(scheduledJob -> handleExpirationTime(scheduledJob)
                         .map(JobDetails::getStatus)
                         .filter(s -> !JobStatus.ERROR.equals(s))
-                        //.map(s -> updateTriggerTime(scheduledJob, Duration.ofMillis(backoffRetryMillis)))
-                        .map(s -> scheduleRegistering(scheduledJob,
-                                                      Optional.of(new PointInTimeTrigger(DateUtil.now().plus(backoffRetryMillis,
-                                                                                                             ChronoUnit.MILLIS).toInstant().toEpochMilli(), null, null))))
+                        .map(s -> scheduleRegistering(scheduledJob, Optional.of(getRetryTrigger())))
                         .flatMap(p -> p)
                         .map(scheduleId -> JobDetails.builder()
                                 .of(jobWithStatusAndHandle(scheduledJob, JobStatus.RETRY, scheduleId))
@@ -261,6 +251,11 @@ public abstract class BaseTimerJobScheduler implements ReactiveJobScheduler {
                         .map(jobRepository::save)
                         .flatMapCompletionStage(p -> p))
                 .peek(job -> LOGGER.debug("Retry executed {}", job));
+    }
+
+    private PointInTimeTrigger getRetryTrigger() {
+        return new PointInTimeTrigger(DateUtil.now().plus(backoffRetryMillis,
+                                                          ChronoUnit.MILLIS).toInstant().toEpochMilli(), null, null);
     }
 
     private CompletionStage<JobDetails> handleExpiredJob(JobDetails scheduledJob) {

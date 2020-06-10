@@ -94,10 +94,8 @@ public class HttpJobExecutor implements JobExecutor {
     private <T extends JobExecutionResponse> PublisherBuilder<T> handleError(T response) {
         LOGGER.info("handle error {}", response);
         return ReactiveStreams.of(response)
-                .map(jobStreams::publishJobError)
-                .map(v -> response)
+                .peek(jobStreams::publishJobError)
                 .peek(r -> LOGGER.debug("Error executing job {}.", r));
-
     }
 
     private <T extends JobExecutionResponse> PublisherBuilder<T> handleSuccess(T response) {

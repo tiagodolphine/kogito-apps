@@ -16,7 +16,9 @@
 
 package org.kie.kogito.jobs.service.refactoring.job;
 
+import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.kie.kogito.jobs.api.JobBuilder;
@@ -26,12 +28,15 @@ import org.kie.kogito.timer.Trigger;
 import org.kie.kogito.timer.impl.IntervalTrigger;
 import org.kie.kogito.timer.impl.PointInTimeTrigger;
 
+import static org.kie.kogito.jobs.service.model.JobStatus.SCHEDULED;
+
 public class ScheduledJobAdapter {
 
     public static ScheduledJob of(JobDetails jobDetails) {
         return ScheduledJob.builder()
                 .job(new JobBuilder()
                              .id(jobDetails.getId())
+                             .priority(jobDetails.getPriority())
                              .expirationTime(DateUtil.fromDate(jobDetails.getTrigger().hasNextFireTime()))
                              .callbackEndpoint(Optional.ofNullable(jobDetails.getRecipient())
                                                        .map(Recipient.HTTPRecipient.class::cast)
@@ -70,21 +75,29 @@ public class ScheduledJobAdapter {
                 .status(scheduledJob.getStatus())
                 .type(JobDetails.Type.HTTP)
                 .trigger(triggerAdapter(scheduledJob))
+                .priority(scheduledJob.getPriority())
                 .build();
         return jobDetails;
     }
 
     public static Trigger triggerAdapter(ScheduledJob scheduledJob) {
+        return Optional.ofNullable(scheduledJob)
+                .filter(job -> Objects.nonNull(job.getExpirationTime()))
+                .map(job -> job.hasInterval()
+                        .<Trigger>map(interval -> new IntervalTrigger(0l,
+                                                                      new Date(scheduledJob.getExpirationTime().toInstant().toEpochMilli()),
+                                                                      null,
+                                                                      scheduledJob.getRepeatLimit(),
+                                                                      0,
+                                                                      interval,
+                                                                      null,
+                                                                      null))
+                        .orElse(new PointInTimeTrigger(scheduledJob.getExpirationTime().toInstant().toEpochMilli(),
+                                                       null, null)))
+                .orElse(null);
+    }
 
-        return scheduledJob.hasInterval()
-                .<Trigger>map(interval -> new IntervalTrigger(0l,
-                                                              new Date(scheduledJob.getExpirationTime().toInstant().toEpochMilli()),
-                                                              null,
-                                                              scheduledJob.getRepeatLimit(),
-                                                              0,
-                                                              interval,
-                                                              null,
-                                                              null))
-                .orElse(new PointInTimeTrigger(scheduledJob.getExpirationTime().toInstant().toEpochMilli(), null, null));
+    public static IntervalTrigger intervalTrigger(ZonedDateTime start, int repeatLimit, int intervalMillis) {
+        return new IntervalTrigger(0, DateUtil.toDate(start), null, repeatLimit, 0, intervalMillis, null, null);
     }
 }

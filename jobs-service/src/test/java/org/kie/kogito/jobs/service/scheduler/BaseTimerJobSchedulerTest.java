@@ -35,6 +35,7 @@ import org.kie.kogito.jobs.service.model.JobExecutionResponse;
 import org.kie.kogito.jobs.service.model.JobStatus;
 import org.kie.kogito.jobs.service.refactoring.job.JobDetails;
 import org.kie.kogito.jobs.service.refactoring.job.ManageableJobHandle;
+import org.kie.kogito.jobs.service.refactoring.job.ScheduledJobAdapter;
 import org.kie.kogito.jobs.service.repository.ReactiveJobRepository;
 import org.kie.kogito.jobs.service.utils.DateUtil;
 import org.kie.kogito.timer.Trigger;
@@ -98,6 +99,7 @@ public abstract class BaseTimerJobSchedulerTest {
         scheduledJob = JobDetails.builder().id(JOB_ID).trigger(trigger).status(SCHEDULED).build();
         scheduled = CompletableFuture.completedFuture(scheduledJob);
         lenient().when(jobRepository.get(JOB_ID)).thenReturn(scheduled);
+        lenient().when(jobRepository.save(any(JobDetails.class))).thenAnswer(a -> CompletableFuture.completedFuture(a.getArgument(0)));
         lenient().when(jobExecutor.execute(any())).thenReturn(scheduled);
 
         errorResponse = JobExecutionResponse.builder()
@@ -139,12 +141,10 @@ public abstract class BaseTimerJobSchedulerTest {
                 .filter(Boolean.TRUE::equals)
                 .map(e -> JobDetails.builder()
                         .status(jobStatus)
-
                         .id(JOB_ID)
-                        .trigger(new PointInTimeTrigger(DateUtil.now().minusDays(1).toInstant().toEpochMilli(), null,
-                                                        null))
+                        .trigger(new PointInTimeTrigger(System.currentTimeMillis(), null, null))
                         .build())
-                .orElse(scheduledJob);
+                .orElse(JobDetails.builder().of(scheduledJob).status(jobStatus).build());
 
         when(jobRepository.exists(JOB_ID)).thenReturn(CompletableFuture.completedFuture(true));
 
@@ -225,7 +225,7 @@ public abstract class BaseTimerJobSchedulerTest {
     private JobDetails createPeriodicJob() {
         return JobDetails.builder()
                 .id(JOB_ID)
-                .trigger(new IntervalTrigger(0, DateUtil.toDate(expirationTime), null, 10, 0, 2, null, null))
+                .trigger(ScheduledJobAdapter.intervalTrigger(expirationTime, 10, 2))
                 .status(SCHEDULED)
                 .build();
     }
@@ -238,7 +238,7 @@ public abstract class BaseTimerJobSchedulerTest {
         verify(tested(), never()).cancel(scheduleCaptorFuture.capture());
 
         subscribeOn(executionSuccess.buildRs());
-        verify(jobRepository).save(scheduleCaptor.capture());
+        verify(jobRepository, times(2)).save(scheduleCaptor.capture());
         JobDetails scheduleCaptorValue = scheduleCaptor.getValue();
         assertThat(scheduleCaptorValue.getStatus()).isEqualTo(SCHEDULED);
         assertThat(scheduleCaptorValue.getExecutionCounter()).isEqualTo(1);
@@ -353,8 +353,7 @@ public abstract class BaseTimerJobSchedulerTest {
 
         scheduledJob = JobDetails.builder()
                 .of(scheduledJob)
-                .trigger(new IntervalTrigger(0, DateUtil.toDate(DateUtil.now().minusHours(1)), null, 1, 0, 1, null,
-                                             null))
+                .trigger(ScheduledJobAdapter.intervalTrigger(DateUtil.now().minusHours(1), 1, 1))
                 .build();
 
         //testing with forcing disabled
